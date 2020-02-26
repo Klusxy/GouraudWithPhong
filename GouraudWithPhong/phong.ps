@@ -1,0 +1,59 @@
+Texture2D shaderTexture;
+SamplerState SampleType;
+
+cbuffer LightBuffer
+{
+	float4 specularColor;
+	float4 ambientColor;
+	float4 diffuseColor;
+	float3 lightPosition;
+	float padding;
+};
+
+struct PixelInputType
+{
+	float4 position : SV_POSITION;
+	float3 calcLightPosition : POSITION0;
+	float4 color : COLOR;
+	float2 tex		: TEXCOORD;
+	float3 normal : NORMAL;
+	float3 viewDirection : TEXCOORD1;
+};
+
+float4 TexturePixelShader(PixelInputType input) : SV_TARGET
+{
+	float4 textureColor;
+	float4 ambient;
+	float4 diffuse;
+	float4 specular;
+	float4 color;
+
+	float ambiStrength;
+	float diffStrength;
+	float specStrength;
+	
+	float3 lightDirection;
+
+	textureColor = shaderTexture.Sample(SampleType, input.tex);//纹理
+	//环境光(平行光):不直接指向物体表面上的光叫做环境光
+	ambiStrength = 0.1f;
+	ambient = ambientColor * ambiStrength;
+
+	//漫反射光:不会照亮它不直接触摸的表面(依赖于光的位置，法线)
+	lightDirection = normalize(lightPosition - input.calcLightPosition);
+	//为了比较gouraud和phong的区别，所以不用cb中的lightPosition
+	float3 lp = float3(1.0f, 1.3f, -2.0f);
+	lightDirection = normalize(lp - input.calcLightPosition);
+	diffStrength = max(dot(input.normal, lightDirection), 0.0f);
+	diffuse = diffuseColor * diffStrength;
+
+	//镜面高光（类似于镜子，观察角度不一样，得到的光照亮度也不同，所以依赖于光的位置，法线，观察方向）
+	float3 ref = reflect(-lightDirection, input.normal);//入射光线和法线，所以这里lightDirection需要取反
+	specStrength = pow(saturate(dot(ref, input.viewDirection)), 16);//shininess反光度(一个物体的反光度越高，反射光的能力越强，散射得越少，高光点就会越小//过于大的话可能specStrength的结果很小，导致没有镜面光)
+	specular = specularColor * specStrength * 1.5;
+
+	color = (diffuse + ambient) * input.color + specular;
+	//color = (diffuse + ambient) * textureColor + specular;
+
+    return color;
+}
