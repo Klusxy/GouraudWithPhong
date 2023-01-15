@@ -1,5 +1,4 @@
 # Gouraud With Phong
-很久之前学d3d11时候写的一个demo，还原了LearnOpenGL上Gouraud和Phong光照模型的效果对比
 <div>
   <img src="./Images/compare.png" width="800px"/> 
 </div>
